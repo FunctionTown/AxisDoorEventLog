@@ -2,6 +2,8 @@
 
 # AXIS VAPIX API
 # Get door controller access log 
+# Author: Robert A Swirsky / Thrill Science
+# Date:   June 1, 2020 (Initial Commit)
 
 import requests
 import json
