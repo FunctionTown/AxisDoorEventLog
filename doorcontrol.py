@@ -58,13 +58,17 @@ def get_access_point_list(params):
    else:
       return {}
 
+# Get the configuration lists that don't change on every new event
+def get_configuration_lists(args):
+   params = (args.ipAddress, args.user, args.password)
+   userList = get_user_list(params)
+   doorList = get_door_list(params)
+   accessPointList = get_access_point_list(params)
+   return (userList, doorList, accessPointList)
+
 
 # Get all Granted and Denied events
-def get_events(userListfn, doorListFn, accessPointFn, args):
-   params = (args.ipAddress, args.user, args.password)
-   userList = userListfn(params)
-   doorList = doorListFn(params)
-   accessPointList = accessPointFn(params)
+def get_events(userList, doorList, accessPointList, args):
    data = {"axlog:FetchEvents3":
                {"FilterSets":[
                  {"Start": args.fromDate,
@@ -81,7 +85,6 @@ def get_events(userListfn, doorListFn, accessPointFn, args):
                "ConvertFilterTimeFromLocal":True
                }
          }
-
    r=requests.post(str.format("http://{0}/vapix/eventlogger",args.ipAddress),
             json.dumps(data),
             auth=HTTPDigestAuth(args.user, args.password))
@@ -135,5 +138,5 @@ if __name__ == "__main__":
        print("Error: Set AxisAddress, AxisUser, and AxisPassword as environment variables or use command line options.")
        exit(-1)
     else:  
-      get_events(get_user_list, get_door_list, get_access_point_list, args)
-
+      (userList, doorList, accessPointList) = get_configuration_lists(args)
+      get_events(userList, doorList, accessPointList, args)
