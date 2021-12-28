@@ -5,6 +5,8 @@
 # Author: Robert A Swirsky / Thrill Science
 # Date:   June 1, 2020 (Initial Commit)
 
+# Updates : December 9, 2021 (Add HTTPs / HTTP methods)
+
 import requests
 import json
 import argparse
@@ -12,6 +14,8 @@ import time
 import os
 from datetime import date
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from requests.auth import HTTPDigestAuth
 
@@ -27,9 +31,14 @@ def check_key(d, key):
 def get_door_list(params):
    (addr, username, password) = params
    data = {"axtdc:GetDoorList":{}}
-   r=requests.post(str.format("http://{0}/vapix/doorcontrol", addr),
-      json.dumps(data),
-      auth=HTTPDigestAuth(username, password))
+   if (args.httpmethod == 'HTTPS' or args.httpmethod == None):
+      r=requests.post(str.format("https://{0}/vapix/doorcontrol", addr),
+       json.dumps(data),
+       auth=HTTPDigestAuth(username, password), verify = False)
+   else:
+      r=requests.post(str.format("http://{0}/vapix/doorcontrol", addr),
+       json.dumps(data),
+       auth=HTTPDigestAuth(username, password))
    if r.status_code == 200:
       e = json.loads(r.text)
       return { k['token']: k['Name'] for k in e['Door']}
@@ -37,9 +46,14 @@ def get_door_list(params):
       return {}
 
 def make_http_request(data, addr, username, password):
-   r=requests.post(str.format("http://{0}/vapix/pacs", addr),
-      json.dumps(data),
-      auth=HTTPDigestAuth(username, password))
+   if (args.httpmethod == 'HTTPS' or args.httpmethod == None):
+      r=requests.post(str.format("https://{0}/vapix/pacs", addr),
+       json.dumps(data),
+       auth=HTTPDigestAuth(username, password), verify = False)
+   else:
+      r=requests.post(str.format("http://{0}/vapix/pacs", addr),
+       json.dumps(data),
+       auth=HTTPDigestAuth(username, password))
    return r
 
 def get_user_list(params):
@@ -85,7 +99,12 @@ def get_events(userList, doorList, accessPointList, args):
                "ConvertFilterTimeFromLocal":True
                }
          }
-   r=requests.post(str.format("http://{0}/vapix/eventlogger",args.ipAddress),
+   if (args.httpmethod == 'HTTPS' or args.httpmethod == None):
+      r=requests.post(str.format("https://{0}/vapix/eventlogger",args.ipAddress),
+            json.dumps(data),
+            auth=HTTPDigestAuth(args.user, args.password), verify = False)
+   else:
+      r=requests.post(str.format("http://{0}/vapix/eventlogger",args.ipAddress),
             json.dumps(data),
             auth=HTTPDigestAuth(args.user, args.password))
    if r.status_code == 200:
@@ -127,16 +146,18 @@ if __name__ == "__main__":
     axisAddress = os.environ.get('AxisAddress')
     axisUser = os.environ.get('AxisUser')
     axisPassword = os.environ.get('AxisPassword')
+    axisHttpMethod = os.environ.get('axisHttpMethod')
 
     parser.add_argument("--fromDate",default=defaultDate, help="event date in YYYY-MM-DDTHH:MM:SS format")
     parser.add_argument("--ipAddress",default=axisAddress, help="ip address or DNS name of controller")
     parser.add_argument("--user",default=axisUser, help="username")
     parser.add_argument("--password",default=axisPassword, help="password")
+    parser.add_argument("--httpmethod",default=axisHttpMethod, help="httpmethod")
     args = parser.parse_args()
 
     if args.ipAddress == None or args.user == None or args.password == None:
        print("Error: Set AxisAddress, AxisUser, and AxisPassword as environment variables or use command line options.")
        exit(-1)
-    else:  
+    else:
       (userList, doorList, accessPointList) = get_configuration_lists(args)
       get_events(userList, doorList, accessPointList, args)
